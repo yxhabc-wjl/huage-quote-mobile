@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="华哥报价">
+<meta name="theme-color" content="#1976D2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>华哥报价计算器 手机版 V1.0</title>
+<style>
+  :root {
+    --bg: #D2DCE6; --card: #FFFFFF; --border: #C2CDD9; --text: #1F2D3D;
+    --sub: #6B7C8F; --accent: #1976D2; --accent-dk: #0D47A1;
+    --input: #EDF2F7; --amber: #F57C00; --amber-bg: #FFF4E2; --amber-hd: #E65100;
+    --side: #2B3A4A; --row-alt: #EDF2F7; --ok: #2E7D32; --red: #C62828;
+  }
+  [data-theme="dark"] {
+    --bg: #1B2430; --card: #25303E; --border: #3A4A5E; --text: #E8EEF5;
+    --sub: #9AAABB; --input: #2E3B4C; --amber-bg: #4A3319; --amber-hd: #FFB74D;
+    --side: #141C26; --row-alt: #2E3B4C; --ok: #66BB6A; --red: #EF7B7B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 15px;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  /* ===== 顶栏 ===== */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--side); color: #fff;
+    padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header .ttl { font-size: 17px; font-weight: 700; }
+  header .ver { font-size: 11px; color: #9AA6B2; margin-top: 1px; }
+  #btnTheme {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    font-size: 14px; padding: 8px 14px; cursor: pointer;
+  }
+  /* ===== 底部导航 ===== */
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+    background: var(--side); display: flex;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav button {
+    flex: 1; background: none; border: 0; color: #CBD5E1;
+    font-size: 12px; padding: 10px 0 8px; cursor: pointer;
+  }
+  nav button .ic { display: block; font-size: 20px; margin-bottom: 2px; }
+  nav button.on { color: #fff; background: var(--accent); border-radius: 0; }
+  main { padding: 10px; max-width: 640px; margin: 0 auto; }
+  section[hidden] { display: none; }
+  /* ===== 卡片 ===== */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+  .card > .hd {
+    background: var(--accent); color: #fff; font-weight: 700;
+    padding: 9px 12px; font-size: 15px;
+  }
+  .card > .hd .note { float: right; font-weight: 400; font-size: 11px; opacity: .85; }
+  .bd { padding: 10px 12px; }
+  .subhd {
+    color: var(--accent); font-weight: 700; font-size: 13px;
+    margin: 6px 0 6px; padding: 4px 8px; background: var(--row-alt);
+    border-left: 3px solid var(--accent); border-radius: 4px;
+  }
+  /* ===== 输入行 ===== */
+  .irow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .irow label {
+    flex: 0 0 88px; background: var(--input); border-radius: 6px;
+    padding: 9px 8px; font-size: 13px; color: var(--text);
+  }
+  .irow .fx { flex: 0 0 34px; font-size: 12px; color: var(--sub); }
+  input[type="text"], input[type="number"], select {
+    flex: 1; min-width: 0; background: var(--card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 9px 8px; font-size: 16px; text-align: right;
+    appearance: none; -webkit-appearance: none;
+  }
+  select { text-align: left; direction: rtl; }
+  select option { direction: ltr; }
+  input.narrow { flex: 0 1 90px; }
+  /* ===== 结果行 ===== */
+  .rrow { display: flex; align-items: center; margin-bottom: 6px; }
+  .rrow .rl {
+    flex: 0 0 150px; background: var(--row-alt); border-radius: 6px;
+    padding: 8px; font-size: 13px; color: var(--text);
+  }
+  .rrow .rv {
+    flex: 1; text-align: right; font-weight: 700; font-size: 16px;
+    padding: 0 4px; font-variant-numeric: tabular-nums; word-break: break-all;
+  }
+  .rrow .ru { flex: 0 0 40px; font-size: 12px; color: var(--sub); }
+  .rrow.star { background: var(--amber-bg); border-radius: 8px; padding: 4px; }
+  .rrow.star .rl { background: none; color: var(--amber-hd); font-weight: 700; flex-basis: 150px; }
+  .rrow.star .rv { color: var(--amber-hd); font-size: 20px; }
+  .rrow.star .ru { color: var(--amber-hd); }
+  /* ===== 附加区表格 ===== */
+  .addhead {
+    display: grid; gap: 4px; margin-bottom: 6px; font-size: 12px;
+    color: #fff; background: var(--accent); border-radius: 6px; padding: 6px 8px;
+    font-weight: 700;
+  }
+  .addrow { display: grid; gap: 4px; align-items: center; margin-bottom: 6px; }
+  .addrow input, .addrow select { padding: 8px 6px; font-size: 16px; }
+  .addrow .nv { text-align: right; font-weight: 700; font-size: 13px;
+    font-variant-numeric: tabular-nums; word-break: break-all; color: var(--text); }
+  .g4 { grid-template-columns: 58px 1fr 1fr 62px 58px; }
+  .g4c { grid-template-columns: 1fr 1fr 1fr 62px 58px; }
+  .addrow .dir { padding: 0; text-align: center; flex: none; }
+  .srcline { text-align: center; font-size: 12px; color: var(--sub); margin: 6px 0; }
+  .totalrow { display: flex; align-items: center; background: var(--amber-bg);
+    border-radius: 8px; padding: 4px 8px; margin-top: 4px; }
+  .totalrow .tl { flex: 1; color: var(--amber-hd); font-weight: 700; font-size: 14px; }
+  .totalrow .tv { color: var(--amber-hd); font-weight: 700; font-size: 17px;
+    font-variant-numeric: tabular-nums; word-break: break-all; text-align: right; }
+  /* ===== 按钮 ===== */
+  .btnrow { display: flex; gap: 10px; margin: 4px 0 14px; }
+  .btn {
+    flex: 1; border: 0; border-radius: 10px; padding: 13px 0;
+    font-size: 16px; font-weight: 700; color: #fff; cursor: pointer;
+  }
+  .btn.amber { background: var(--amber); }
+  .btn.plain { background: var(--card); color: var(--accent); border: 1px solid var(--accent); }
+  .btn.small { flex: none; padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+  .btn.ghost { background: var(--card); color: var(--sub); border: 1px solid var(--border); font-weight: 400; }
+  /* ===== 记录页 ===== */
+  .reccard { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 10px; padding: 10px 12px; }
+  .reccard .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .reccard .nm { font-weight: 700; font-size: 15px; }
+  .reccard .tm { font-size: 11px; color: var(--sub); }
+  .reccard .del { background: none; border: 0; color: var(--red); font-size: 13px; padding: 4px 6px; }
+  .recgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; font-size: 13px; }
+  .recgrid div { display: flex; justify-content: space-between; }
+  .recgrid span { color: var(--sub); }
+  .recgrid b { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .recgrid .hi b { color: var(--amber-hd); }
+  .emptytip { text-align: center; color: var(--sub); padding: 40px 0; font-size: 14px; }
+  /* ===== 密度表 ===== */
+  .dtab { display: flex; gap: 8px; margin-bottom: 10px; }
+  .dtab button { flex: 1; border: 1px solid var(--accent); background: var(--card);
+    color: var(--accent); border-radius: 8px; padding: 9px 0; font-size: 14px; font-weight: 700; }
+  .dtab button.on { background: var(--accent); color: #fff; }
+  .drow { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .drow input[type="text"] { flex: 1.4; text-align: left; }
+  .drow input[type="number"] { flex: 1; }
+  .drow .del { flex: none; background: none; border: 0; color: var(--red); font-size: 16px; padding: 6px; }
+  /* ===== Toast ===== */
+  #toast {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    background: rgba(20,28,38,.92); color: #fff; padding: 10px 18px;
+    border-radius: 20px; font-size: 14px; z-index: 99; display: none; max-width: 86vw;
+  }
+  #errtip { color: var(--red); font-size: 12px; padding: 2px 12px 8px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="ttl">华哥报价计算器</div>
+    <div class="ver">手机版 V1.0</div>
+  </div>
+  <button id="btnTheme">🌙 夜间</button>
+</header>
+
+<main>
+<!-- ==================== 页1：报价 ==================== -->
+<section id="page-quote">
+  <div class="card">
+    <div class="hd">输入区</div>
+    <div class="bd">
+      <div class="irow"><label>产品名称</label><input type="text" id="B3" placeholder="选填"></div>
+      <div class="irow"><label>加工设备</label>
+        <select id="B4"></select></div>
+      <div class="irow"><label>毛坯类型</label><select id="B5"></select></div>
+      <div class="irow" data-row="lathe"><label>材料外径</label><input type="text" inputmode="decimal" id="B6"><span class="fx">mm</span></div>
+      <div class="irow" data-row="tube" hidden><label>内径</label><input type="text" inputmode="decimal" id="B6B"><span class="fx">mm</span></div>
+      <div class="irow" data-row="lathe"><label>零件长度</label><input type="text" inputmode="decimal" id="B7"><span class="fx">mm</span></div>
+      <div class="irow" data-row="mc" hidden><label>方料宽</label><input type="text" inputmode="decimal" id="B8"><span class="fx">mm</span></div>
+      <div class="irow" data-row="mc" hidden><label>方料高</label><input type="text" inputmode="decimal" id="B9"><span class="fx">mm</span></div>
+      <div class="irow" data-row="mc" hidden><label>方料长</label><input type="text" inputmode="decimal" id="B10"><span class="fx">mm</span></div>
+      <div class="irow"><label>生产数量</label><input type="text" inputmode="decimal" id="B11"><span class="fx">pcs</span></div>
+      <div class="irow"><label>材质</label><select id="B12"></select></div>
+      <div class="irow"><label>密度 ρ</label><input type="text" inputmode="decimal" id="dens"><span class="fx">g/cm³</span></div>
+      <div id="errtip"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">主计算区 <span class="note">毛重按报价表计算</span></div>
+    <div class="bd">
+      <div class="rrow"><span class="rl">单件用料长</span><span class="rv" id="r_B16"></span><span class="ru">mm</span></div>
+      <div class="rrow"><span class="rl">有效长度</span><span class="rv" id="r_B17"></span><span class="ru">mm</span></div>
+      <div class="rrow"><span class="rl">截面积</span><span class="rv" id="r_B18"></span><span class="ru">mm²</span></div>
+      <div class="rrow"><span class="rl">整根棒料重量</span><span class="rv" id="r_B19"></span><span class="ru">kg</span></div>
+      <div class="rrow"><span class="rl">产出件数</span><span class="rv" id="r_B20"></span><span class="ru">件</span></div>
+      <div class="rrow" data-row="mc"><span class="rl">方块体积</span><span class="rv" id="r_B21"></span><span class="ru">mm³</span></div>
+      <div class="rrow" data-row="mc"><span class="rl">方块单件毛重</span><span class="rv" id="r_B22"></span><span class="ru">kg</span></div>
+      <div class="rrow star"><span class="rl">★ 单件毛重</span><span class="rv" id="r_B23"></span><span class="ru">kg</span></div>
+      <div class="rrow"><span class="rl">总毛重</span><span class="rv" id="r_B24"></span><span class="ru">kg</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">车制附加计算区 <span class="note">π/4×D²×L×ρ÷10⁶</span></div>
+    <div class="bd">
+      <div class="addhead g4"><span>#</span><span>直径mm</span><span>长度mm</span><span>净重kg</span><span>方向</span></div>
+      <div id="addLathe"></div>
+      <div class="totalrow"><span class="tl">净重合计 D32</span><span class="tv" id="r_D32"></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">加工中心附加计算区</div>
+    <div class="bd">
+      <div class="subhd">方料（块料密度）：宽×高×长×ρ÷10⁶</div>
+      <div class="addhead g4c"><span>宽mm</span><span>高mm</span><span>长mm</span><span>净重kg</span><span>方向</span></div>
+      <div id="addMcSq"></div>
+      <div class="subhd">圆棒（当前密度）：π/4×D²×L×ρ÷10⁶</div>
+      <div class="addhead g4"><span>#</span><span>直径mm</span><span>长度mm</span><span>净重kg</span><span>方向</span></div>
+      <div id="addMcRb"></div>
+      <div class="totalrow"><span class="tl">净重合计 E40</span><span class="tv" id="r_E40"></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">成本核算（元/件）</div>
+    <div class="bd">
+      <div class="irow" data-row="sec"><label>原料单价</label><input type="text" inputmode="decimal" id="B44"><span class="fx">元/kg</span></div>
+      <div class="irow" data-row="sec"><label>废料单价</label><input type="text" inputmode="decimal" id="B45"><span class="fx">元/kg</span></div>
+      <div class="irow" data-row="sec"><label>表面处理单价</label><input type="text" inputmode="decimal" id="B48"><span class="fx">元/kg</span></div>
+      <div class="irow" data-row="sec"><label>车床加工秒数</label><input type="text" inputmode="decimal" id="B51"><span class="fx">s</span></div>
+      <div class="irow" data-row="sec"><label>加工中心秒数</label><input type="text" inputmode="decimal" id="B56"><span class="fx">s</span></div>
+      <div id="autoCap" hidden>
+        <div class="subhd">⚙ 自动车床产能输入（件/天）</div>
+        <div class="irow"><label>车床产能</label><input type="text" inputmode="decimal" id="CAP_L"><span class="fx">件/天</span></div>
+        <div class="irow"><label>二次加工1</label><input type="text" inputmode="decimal" id="CAP_S1"><span class="fx">件/天</span></div>
+        <div class="irow"><label>二次加工2</label><input type="text" inputmode="decimal" id="CAP_S2"><span class="fx">件/天</span></div>
+        <div class="irow"><label>二次加工3</label><input type="text" inputmode="decimal" id="CAP_S3"><span class="fx">件/天</span></div>
+        <div class="irow"><label>二次加工4</label><input type="text" inputmode="decimal" id="CAP_S4"><span class="fx">件/天</span></div>
+        <div class="irow"><label>日费</label><input type="text" inputmode="decimal" id="DAY_RATE"><span class="fx">元/天</span></div>
+      </div>
+      <div class="rrow"><span class="rl">材料费</span><span class="rv" id="r_B46"></span><span class="ru">元</span></div>
+      <div class="rrow"><span class="rl">废料抵扣</span><span class="rv" id="r_B47"></span><span class="ru">元</span></div>
+      <div class="rrow"><span class="rl">表面处理费</span><span class="rv" id="r_B49"></span><span class="ru">元</span></div>
+      <div class="rrow"><span class="rl">调机费</span><span class="rv" id="r_B50"></span><span class="ru">元</span></div>
+      <div class="rrow"><span class="rl">小时单价</span><span class="rv" id="r_B52"></span><span class="ru">元/h</span></div>
+      <div class="rrow"><span class="rl">加工费</span><span class="rv" id="r_B53"></span><span class="ru">元</span></div>
+      <div class="rrow" id="row_mcf"><span class="rl">加工中心费</span><span class="rv" id="r_B56FEE"></span><span class="ru">元</span></div>
+      <div class="rrow" id="row_lathefee" hidden><span class="rl">车床加工费</span><span class="rv" id="r_LATHE_FEE"></span><span class="ru">元</span></div>
+      <div class="rrow" id="row_secfee" hidden><span class="rl">二次加工合计</span><span class="rv" id="r_SEC_FEE_TOTAL"></span><span class="ru">元</span></div>
+      <div class="rrow"><span class="rl">清洗费</span><span class="rv" id="r_B55"></span><span class="ru">元/件</span></div>
+      <div class="rrow star"><span class="rl">★ 总成本</span><span class="rv" id="r_B54"></span><span class="ru">元/件</span></div>
+    </div>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn amber" id="btnSave">💾 保存记录</button>
+    <button class="btn plain" id="btnReset">清空</button>
+  </div>
+</section>
+
+<!-- ==================== 页2：记录 ==================== -->
+<section id="page-records" hidden>
+  <div class="btnrow" style="margin-top:2px">
+    <button class="btn small plain" id="btnExp">导出 JSON</button>
+    <button class="btn small plain" id="btnImp">导入 JSON</button>
+    <button class="btn small ghost" id="btnClr">清空全部</button>
+    <input type="file" id="fileImp" accept=".json,application/json" hidden>
+  </div>
+  <div id="recList"></div>
+</section>
+
+<!-- ==================== 页3：密度表 ==================== -->
+<section id="page-density" hidden>
+  <div class="card">
+    <div class="hd">密度表配置 <span class="note">单位 g/cm³</span></div>
+    <div class="bd">
+      <div class="dtab">
+        <button id="tabR" class="on">圆棒料表（走心/走刀/自动车床）</button>
+        <button id="tabB">块料表（加工中心）</button>
+      </div>
+      <div id="densList"></div>
+      <div class="btnrow" style="margin-top:10px">
+        <button class="btn small plain" id="btnAddMat">＋ 添加材质</button>
+        <button class="btn small ghost" id="btnResetDens">恢复默认</button>
+      </div>
+      <div class="srcline">修改自动保存；走心/走刀/自动车床用圆棒料表，加工中心用块料表</div>
+    </div>
+  </div>
+</section>
+</main>
+
+<nav>
+  <button class="on" data-page="page-quote"><span class="ic">🧮</span>报价</button>
+  <button data-page="page-records"><span class="ic">📋</span>记录</button>
+  <button data-page="page-density"><span class="ic" style="transform:scale(1.2)">⚖</span>密度表</button>
+</nav>
+<div id="toast"></div>
+
+<script src="engine.js"></script>
+<script>
+"use strict";
+/* ==================== 状态与持久化 ==================== */
+var LS = {
+  get: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+var DENSITY_LS = "wujin_m_density_v1", REC_LS = "wujin_m_records_v1",
+    INP_LS = "wujin_m_inputs_v1", THEME_LS = "wujin_m_theme_v1";
+
+function defaultTables() {
+  return { "圆棒料": MATERIALS.map(function (m) { return m.slice(); }),
+           "块料": MATERIALS.map(function (m) { return m.slice(); }) };
+}
+var density = LS.get(DENSITY_LS, null) || defaultTables();
+var records = LS.get(REC_LS, []);
+var inputs = Object.assign({}, DEFAULTS, LS.get(INP_LS, {}));
+var curDTab = "圆棒料";
+
+function saveDensity() { LS.set(DENSITY_LS, density); }
+function saveRecords() { LS.set(REC_LS, records); }
+function saveInputs() { LS.set(INP_LS, inputs); }
+
+/* ==================== 工具 ==================== */
+function $(id) { return document.getElementById(id); }
+function toast(msg) {
+  var t = $("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = "none"; }, 2200);
+}
+function showErr(msg) {
+  var e = $("errtip");
+  if (msg) { e.textContent = "⚠ " + msg; e.style.display = "block"; }
+  else e.style.display = "none";
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) {
+  return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+/* ==================== 初始化控件 ==================== */
+function fillSelect(sel, arr, cur) {
+  sel.innerHTML = arr.map(function (v) {
+    return '<option value="' + esc(v) + '">' + esc(v) + "</option>";
+  }).join("");
+  sel.value = cur;
+}
+fillSelect($("B4"), EQUIPMENTS, inputs.B4);
+fillSelect($("B5"), BLANKS, inputs.B5);
+fillSelect($("B12"), MATERIALS.map(function (m) { return m[0]; }), inputs.B12);
+function materialNames() { return density["圆棒料"].map(function (r) { return r[0]; }); }
+
+/* 附加区行定义 */
+var LATHE_ROWS = [
+  { b: "B28", c: "C28", e: "E28", fixed: true },
+  { b: "B29", c: "C29", e: "E29" },
+  { b: "B30", c: "C30", e: "E30" },
+  { b: "B31", c: "C31", e: "E31" },
+  { b: "B101", c: "C101", e: "E101" },
+  { b: "B102", c: "C102", e: "E102" },
+  { b: "B103", c: "C103", e: "E103" },
+  { b: "B104", c: "C104", e: "E104" }
+];
+var MC_SQ_ROWS = [{ b: "B37", c: "C37", d: "D37", f: "F37", fixed: true },
+                  { b: "B38", c: "C38", d: "D38", f: "F38" },
+                  { b: "B39", c: "C39", d: "D39", f: "F39" }];
+var MC_RB_ROWS = [{ b: "B107", c: "C107", f: "F107" },
+                  { b: "B108", c: "C108", f: "F108" }];
+
+function buildLatheRows() {
+  $("addLathe").innerHTML = LATHE_ROWS.map(function (r, i) {
+    return '<div class="addrow g4"><span style="color:var(--sub);font-size:12px">附加' + (i + 1) + "</span>" +
+      '<input type="text" inputmode="decimal" id="' + r.b + '">' +
+      '<input type="text" inputmode="decimal" id="' + r.c + '">' +
+      '<span class="nv" id="n_' + r.b + '">—</span>' +
+      (r.fixed ? '<span class="nv" style="text-align:center">加</span>' : '<select class="dir" id="' + r.e + '"><option>加</option><option>减</option></select>') +
+      "</div>";
+  }).join("");
+}
+function buildMcSqRows() {
+  $("addMcSq").innerHTML = MC_SQ_ROWS.map(function (r, i) {
+    return '<div class="addrow g4c">' +
+      '<input type="text" inputmode="decimal" id="' + r.b + '">' +
+      '<input type="text" inputmode="decimal" id="' + r.c + '">' +
+      '<input type="text" inputmode="decimal" id="' + r.d + '">' +
+      '<span class="nv" id="n_' + r.b + '">—</span>' +
+      (r.fixed ? '<span class="nv" style="text-align:center">加</span>' : '<select class="dir" id="' + r.f + '"><option>加</option><option>减</option></select>') +
+      "</div>";
+  }).join("");
+}
+function buildMcRbRows() {
+  $("addMcRb").innerHTML = MC_RB_ROWS.map(function (r, i) {
+    return '<div class="addrow g4"><span style="color:var(--sub);font-size:12px">圆棒' + (i + 1) + "</span>" +
+      '<input type="text" inputmode="decimal" id="' + r.b + '">' +
+      '<input type="text" inputmode="decimal" id="' + r.c + '">' +
+      '<span class="nv" id="n_' + r.b + '">—</span>' +
+      '<select class="dir" id="' + r.f + '"><option>加</option><option>减</option></select>' +
+      "</div>";
+  }).join("");
+}
+buildLatheRows(); buildMcSqRows(); buildMcRbRows();
+
+/* 输入控件 ↔ 状态 */
+var INPUT_IDS = Object.keys(DEFAULTS).filter(function (k) { return k !== "_3D_WEIGHT"; });
+INPUT_IDS.forEach(function (k) {
+  var el = $(k);
+  if (!el) return;
+  if (el.tagName === "SELECT") {
+    el.value = inputs[k] || "";
+    el.addEventListener("change", function () { inputs[k] = el.value; onStructChange(); });
+  } else {
+    el.value = inputs[k];
+    el.addEventListener("input", function () { inputs[k] = el.value; saveInputs(); recalc(); });
+  }
+});
+/* 密度输入行：绑定当前设备对应的表（B13 或 B13_MC） */
+var densEl = $("dens");
+densEl.addEventListener("input", function () {
+  var key = inputs.B4 === "加工中心" ? "B13_MC" : "B13";
+  inputs[key] = densEl.value; saveInputs(); recalc();
+});
+
+function onStructChange() {
+  // 设备切换：自动切换密度行来源（并联动另一密度值）
+  if (inputs.B4 === "加工中心") {
+    if (densEl.value !== inputs.B13_MC) inputs.B13_MC = densEl.value;
+  }
+  saveInputs(); applyVisibility(); recalc();
+}
+
+/* ==================== 可见性切换 ==================== */
+function applyVisibility() {
+  var isMC = inputs.B4 === "加工中心";
+  var isAuto = inputs.B4 === "自动车床";
+  var isTube = inputs.B5 === "管料";
+  document.querySelectorAll('[data-row="mc"]').forEach(function (el) { el.hidden = !isMC; });
+  document.querySelectorAll('[data-row="lathe"]').forEach(function (el) { el.hidden = isMC; });
+  document.querySelectorAll('[data-row="sec"]').forEach(function (el) { el.hidden = isAuto; });
+  document.querySelector('[data-row="tube"]').hidden = !isTube;
+  $("autoCap").hidden = !isAuto;
+  $("row_mcf").hidden = isAuto;
+  $("row_lathefee").hidden = !isAuto;
+  $("row_secfee").hidden = !isAuto;
+  // 密度行显示当前激活表的密度
+  densEl.value = isMC ? inputs.B13_MC : inputs.B13;
+}
+
+/* ==================== 计算 ==================== */
+var lastOut = null;
+function recalc() {
+  showErr("");
+  var inp = Object.assign({}, inputs);
+  // 管料内径为空时不传入（与电脑版 None 语义一致）
+  if (String(inp.B6B || "").trim() === "") inp.B6B = null;
+  var o;
+  try { o = compute(inp); } catch (e) { showErr("计算异常：" + e.message); return; }
+  lastOut = o;
+  var R = {
+    B16: fgeneral(o.B16), B17: fgeneral(o.B17), B18: ffixed(o.B18, 4),
+    B19: ffixed(o.B19, 6), B20: fgeneral(o.B20), B21: fgeneral(o.B21),
+    B22: ffixed(o.B22, 6), B23: ffixed(o.B23, 6), B24: ffixed(o.B24, 4),
+    B46: ffixed(o.B46, 4), B47: ffixed(o.B47, 4), B49: ffixed(o.B49, 4),
+    B50: ffixed(o.B50, 4), B52: fgeneral(o.B52), B53: ffixed(o.B53, 4),
+    B56FEE: ffixed(o.B56FEE, 4), B55: ffixed(o.B55, 4), B54: ffixed(o.B54, 4),
+    D32: ffixed(o.D32, 8), E40: ffixed(o.E40, 8),
+    LATHE_FEE: ffixed(o.LATHE_FEE !== undefined ? o.LATHE_FEE : 0, 4),
+    SEC_FEE_TOTAL: ffixed(o.SEC_FEE_TOTAL !== undefined ? o.SEC_FEE_TOTAL : 0, 4)
+  };
+  Object.keys(R).forEach(function (k) {
+    var el = $("r_" + k); if (el) el.textContent = R[k];
+  });
+  LATHE_ROWS.concat(MC_RB_ROWS).forEach(function (r) {
+    var v = o["D" + r.b.slice(1)] !== undefined ? o["D" + r.b.slice(1)] : o["E" + r.b.slice(1)];
+    var el = $("n_" + r.b);
+    if (el) el.textContent = ffixed(v, 8);
+  });
+  MC_SQ_ROWS.forEach(function (r) {
+    $("n_" + r.b).textContent = ffixed(o["E" + r.b.slice(1)], 8);
+  });
+}
+
+/* ==================== 保存记录 ==================== */
+$("btnSave").addEventListener("click", function () {
+  if (!lastOut) recalc();
+  var o = lastOut;
+  var rec = {
+    name: inputs.B3 || "（未命名）",
+    pieces: o.B20, gross: o.B23, netA: o.D32, netB: o.E40,
+    mat_fee: o.B46, surf_fee: o.B49, setup_fee: o.B50, mach_fee: o.B53,
+    mc_fee: o.B56FEE !== undefined ? o.B56FEE : 0, clean_fee: o.B55,
+    time: new Date().toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "-")
+  };
+  records.push(rec); saveRecords(); renderRecords();
+  toast("保存成功！已写入第 " + records.length + " 条记录");
+});
+$("btnReset").addEventListener("click", function () {
+  if (!confirm("确定清空全部输入（恢复默认值）吗？")) return;
+  inputs = Object.assign({}, DEFAULTS);
+  INPUT_IDS.forEach(function (k) {
+    var el = $(k);
+    if (!el) return;
+    if (el.tagName === "SELECT") { el.value = inputs[k]; }
+    else el.value = inputs[k];
+  });
+  saveInputs(); applyVisibility(); recalc(); toast("已清空");
+});
+
+/* ==================== 记录页 ==================== */
+function fmtRec(v, n) { return ffixed(v, n); }
+function renderRecords() {
+  var box = $("recList");
+  if (!records.length) { box.innerHTML = '<div class="emptytip">暂无记录，去「报价」页保存一条吧</div>'; return; }
+  var html = records.map(function (r, i) {
+    return '<div class="reccard">' +
+      '<div class="top"><span class="nm">' + esc(r.name || "（未命名）") + "</span>" +
+      '<span><span class="tm">' + esc(r.time || "") + '</span> <button class="del" data-i="' + i + '">删除</button></span></div>' +
+      '<div class="recgrid">' +
+      '<div><span>产出数量</span><b>' + esc(fgeneral(Number(r.pieces) || 0)) + " 件</b></div>" +
+      '<div><span>总毛重</span><b>' + esc(fmtRec(Number(r.gross) || 0, 4)) + " kg</b></div>" +
+      '<div><span>净重A-车制</span><b>' + esc(fmtRec(Number(r.netA) || 0, 4)) + " kg</b></div>" +
+      '<div><span>净重B-加工</span><b>' + esc(fmtRec(Number(r.netB) || 0, 4)) + " kg</b></div>" +
+      '<div><span>材料费</span><b>' + esc(fmtRec(Number(r.mat_fee) || 0, 3)) + "</b></div>" +
+      '<div><span>清洗费</span><b>' + esc(fmtRec(Number(r.clean_fee) || 0, 3)) + "</b></div>" +
+      '<div><span>表面处理</span><b>' + esc(fmtRec(Number(r.surf_fee) || 0, 3)) + "</b></div>" +
+      '<div><span>加工费</span><b>' + esc(fmtRec(Number(r.mach_fee) || 0, 3)) + "</b></div>" +
+      '<div><span>调机费</span><b>' + esc(fmtRec(Number(r.setup_fee) || 0, 3)) + "</b></div>" +
+      '<div><span>加工中心费</span><b>' + esc(fmtRec(Number(r.mc_fee) || 0, 3)) + "</b></div>" +
+      "</div></div>";
+  }).reverse().join("");
+  box.innerHTML = html;
+  box.querySelectorAll(".del").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var i = Number(btn.dataset.i);
+      if (!confirm("确定删除记录「" + (records[i].name || "未命名") + "」吗？")) return;
+      records.splice(i, 1); saveRecords(); renderRecords();
+    });
+  });
+}
+$("btnExp").addEventListener("click", function () {
+  var blob = new Blob([JSON.stringify({ records: records }, null, 1)], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "华哥报价记录_" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + ".json";
+  a.click(); URL.revokeObjectURL(a.href);
+});
+$("btnImp").addEventListener("click", function () { $("fileImp").click(); });
+$("fileImp").addEventListener("change", function (e) {
+  var f = e.target.files[0]; if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () {
+    try {
+      var data = JSON.parse(rd.result);
+      var arr = Array.isArray(data) ? data : (data.records || []);
+      var n = 0;
+      arr.forEach(function (r) {
+        if (r && (r.name !== undefined || r.gross !== undefined)) { records.push(r); n++; }
+      });
+      saveRecords(); renderRecords();
+      toast("导入成功 " + n + " 条（与电脑版记录格式兼容）");
+    } catch (err) { toast("导入失败：不是有效的记录 JSON"); }
+  };
+  rd.readAsText(f, "utf-8");
+  e.target.value = "";
+});
+$("btnClr").addEventListener("click", function () {
+  if (!records.length) { toast("暂无记录"); return; }
+  if (confirm("确定清空全部 " + records.length + " 条记录吗？此操作不可恢复！")) {
+    records = []; saveRecords(); renderRecords();
+  }
+});
+
+/* ==================== 密度表页 ==================== */
+function renderDensity() {
+  $("tabR").classList.toggle("on", curDTab === "圆棒料");
+  $("tabB").classList.toggle("on", curDTab === "块料");
+  var rows = density[curDTab];
+  $("densList").innerHTML = rows.map(function (r, i) {
+    return '<div class="drow">' +
+      '<input type="text" value="' + esc(r[0]) + '" data-i="' + i + '" data-f="n">' +
+      '<input type="text" inputmode="decimal" value="' + esc(r[1]) + '" data-i="' + i + '" data-f="d">' +
+      '<span style="font-size:12px;color:var(--sub)">g/cm³</span>' +
+      '<button class="del" data-i="' + i + '" title="删除">✕</button>' +
+      "</div>";
+  }).join("");
+  $("densList").querySelectorAll('input[data-f="n"]').forEach(function (el) {
+    el.addEventListener("change", function () {
+      var i = Number(el.dataset.i), v = el.value.trim();
+      if (!v) { renderDensity(); return; }
+      var old = density[curDTab][i][0];
+      density[curDTab][i][0] = v;
+      if (old !== v) syncMatName(old, v);
+      saveDensity(); refreshMatSelect(); recalc();
+    });
+  });
+  $("densList").querySelectorAll('input[data-f="d"]').forEach(function (el) {
+    el.addEventListener("input", function () {
+      density[curDTab][Number(el.dataset.i)][1] = el.value;
+      saveDensity(); refreshMatSelect(); recalc();
+    });
+  });
+  $("densList").querySelectorAll(".del").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var i = Number(btn.dataset.i);
+      if (!confirm('删除材质「' + density[curDTab][i][0] + '」？（当前表）')) return;
+      density[curDTab].splice(i, 1); saveDensity(); renderDensity(); recalc();
+    });
+  });
+}
+function syncMatName(oldN, newN) {
+  ["圆棒料", "块料"].forEach(function (k) {
+    density[k].forEach(function (r) { if (r[0] === oldN) r[0] = newN; });
+  });
+}
+function refreshMatSelect() { fillSelect($("B12"), materialNames(), inputs.B12); }
+$("tabR").addEventListener("click", function () { curDTab = "圆棒料"; renderDensity(); });
+$("tabB").addEventListener("click", function () { curDTab = "块料"; renderDensity(); });
+$("btnAddMat").addEventListener("click", function () {
+  var nm = prompt("新材质名称："); if (!nm || !nm.trim()) return;
+  var dv = prompt("密度（g/cm³）："); if (dv === null) return;
+  var d = parseFloat(dv);
+  if (!isFinite(d) || d <= 0) { toast("密度必须是正数"); return; }
+  density["圆棒料"].push([nm.trim(), d]);
+  density["块料"].push([nm.trim(), d]);
+  saveDensity(); refreshMatSelect(); renderDensity(); toast("已添加 " + nm.trim());
+});
+$("btnResetDens").addEventListener("click", function () {
+  if (!confirm("恢复默认密度表？自定义材质将被清除。")) return;
+  density = defaultTables(); saveDensity(); refreshMatSelect(); renderDensity();
+});
+
+/* ==================== 材质 → 密度自动带出 ==================== */
+$("B12").addEventListener("change", function () {
+  inputs.B12 = $("B12").value;
+  var hit = null;
+  ["圆棒料", "块料"].forEach(function (k) {
+    density[k].forEach(function (r) { if (r[0] === inputs.B12 && hit === null) hit = r[1]; });
+  });
+  if (hit !== null) {
+    inputs.B13 = String(hit); inputs.B13_MC = String(hit);
+  }
+  saveInputs(); applyVisibility(); recalc();
+});
+
+/* ==================== 页签/主题 ==================== */
+document.querySelectorAll("nav button").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    document.querySelectorAll("nav button").forEach(function (b) { b.classList.remove("on"); });
+    btn.classList.add("on");
+    ["page-quote", "page-records", "page-density"].forEach(function (id) {
+      $(id).hidden = id !== btn.dataset.page;
+    });
+    window.scrollTo(0, 0);
+  });
+});
+function applyTheme(dark) {
+  document.documentElement.dataset.theme = dark ? "dark" : "";
+  $("btnTheme").textContent = dark ? "☀ 日间" : "🌙 夜间";
+  document.querySelector('meta[name="theme-color"]').content = dark ? "#141C26" : "#1976D2";
+  LS.set(THEME_LS, dark ? "dark" : "light");
+}
+$("btnTheme").addEventListener("click", function () {
+  applyTheme(document.documentElement.dataset.theme !== "dark");
+});
+applyTheme(LS.get(THEME_LS, "light") === "dark");
+
+/* ==================== 启动 ==================== */
+applyVisibility();
+recalc();
+renderRecords();
+renderDensity();
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(function () {});
+}
+</script>
+</body>
+</html>
