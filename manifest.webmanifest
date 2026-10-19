@@ -1,0 +1,16 @@
+{
+  "name": "华哥报价计算器 手机版",
+  "short_name": "华哥报价",
+  "description": "五金零件报价计算：毛重/净重/成本核算，与电脑版 V5.2 计算一致",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#D2DCE6",
+  "theme_color": "#1976D2",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
