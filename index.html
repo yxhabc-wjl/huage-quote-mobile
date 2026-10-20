@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<title>华哥报价计算器 手机版 V1.0</title>
+<title>华哥报价计算器 手机版 V1.1</title>
 <style>
   :root {
     --bg: #D2DCE6; --card: #FFFFFF; --border: #C2CDD9; --text: #1F2D3D;
@@ -78,6 +78,11 @@
     padding: 9px 8px; font-size: 13px; color: var(--text);
   }
   .irow .fx { flex: 0 0 34px; font-size: 12px; color: var(--sub); }
+  /* V1.1：表面处理单价单位切换按钮（元/kg ↔ 元/件） */
+  .irow .fx.unitbtn { flex: 0 0 auto; min-width: 34px; text-align: center; cursor: pointer;
+    background: #E8F1FB; border: 1px solid #B9D2EE; border-radius: 4px;
+    padding: 2px 6px; color: var(--accent-dk); user-select: none; }
+  .irow .fx.unitbtn:active { background: #D2E4F8; }
   input[type="text"], input[type="number"], select {
     flex: 1; min-width: 0; background: var(--card); color: var(--text);
     border: 1px solid var(--border); border-radius: 6px;
@@ -166,7 +171,7 @@
 <header>
   <div>
     <div class="ttl">华哥报价计算器</div>
-    <div class="ver">手机版 V1.0</div>
+    <div class="ver">手机版 V1.1</div>
   </div>
   <button id="btnTheme">🌙 夜间</button>
 </header>
@@ -236,9 +241,10 @@
     <div class="bd">
       <div class="irow" data-row="sec"><label>原料单价</label><input type="text" inputmode="decimal" id="B44"><span class="fx">元/kg</span></div>
       <div class="irow" data-row="sec"><label>废料单价</label><input type="text" inputmode="decimal" id="B45"><span class="fx">元/kg</span></div>
-      <div class="irow" data-row="sec"><label>表面处理单价</label><input type="text" inputmode="decimal" id="B48"><span class="fx">元/kg</span></div>
+      <div class="irow" data-row="sec"><label>表面处理单价</label><input type="text" inputmode="decimal" id="B48"><span class="fx unitbtn" id="B48_UNIT">元/kg</span></div>
       <div class="irow" data-row="sec"><label>车床加工秒数</label><input type="text" inputmode="decimal" id="B51"><span class="fx">s</span></div>
       <div class="irow" data-row="sec"><label>加工中心秒数</label><input type="text" inputmode="decimal" id="B56"><span class="fx">s</span></div>
+      <div class="irow" data-row="sec"><label>表面处理2单价</label><input type="text" inputmode="decimal" id="B48B"><span class="fx unitbtn" id="B48B_UNIT">元/kg</span></div>
       <div id="autoCap" hidden>
         <div class="subhd">⚙ 自动车床产能输入（件/天）</div>
         <div class="irow"><label>车床产能</label><input type="text" inputmode="decimal" id="CAP_L"><span class="fx">件/天</span></div>
@@ -251,6 +257,7 @@
       <div class="rrow"><span class="rl">材料费</span><span class="rv" id="r_B46"></span><span class="ru">元</span></div>
       <div class="rrow"><span class="rl">废料抵扣</span><span class="rv" id="r_B47"></span><span class="ru">元</span></div>
       <div class="rrow"><span class="rl">表面处理费</span><span class="rv" id="r_B49"></span><span class="ru">元</span></div>
+      <div class="rrow"><span class="rl">表面处理2费</span><span class="rv" id="r_B49B"></span><span class="ru">元</span></div>
       <div class="rrow"><span class="rl">调机费</span><span class="rv" id="r_B50"></span><span class="ru">元</span></div>
       <div class="rrow"><span class="rl">小时单价</span><span class="rv" id="r_B52"></span><span class="ru">元/h</span></div>
       <div class="rrow"><span class="rl">加工费</span><span class="rv" id="r_B53"></span><span class="ru">元</span></div>
@@ -322,6 +329,18 @@ function defaultTables() {
            "块料": MATERIALS.map(function (m) { return m.slice(); }) };
 }
 var density = LS.get(DENSITY_LS, null) || defaultTables();
+// V1.1：老用户本地缓存的密度表缺新增默认材质（如 POM）时自动补上，
+// 已有材质的密度/顺序/改名全部保留（与电脑版 load_density_tables 合并语义一致）
+if (LS.get(DENSITY_LS, null)) {
+  var _defTabs = defaultTables();
+  ["圆棒料", "块料"].forEach(function (k) {
+    _defTabs[k].forEach(function (r) {
+      var hit = density[k].some(function (s) { return s[0] === r[0]; });
+      if (!hit) density[k].push(r.slice());
+    });
+  });
+  saveDensity();
+}
 var records = LS.get(REC_LS, []);
 var inputs = Object.assign({}, DEFAULTS, LS.get(INP_LS, {}));
 var curDTab = "圆棒料";
@@ -406,8 +425,10 @@ function buildMcRbRows() {
 }
 buildLatheRows(); buildMcSqRows(); buildMcRbRows();
 
-/* 输入控件 ↔ 状态 */
-var INPUT_IDS = Object.keys(DEFAULTS).filter(function (k) { return k !== "_3D_WEIGHT"; });
+/* 输入控件 ↔ 状态（V1.1：_UNIT 单位状态不是输入框，单独接切换按钮） */
+var INPUT_IDS = Object.keys(DEFAULTS).filter(function (k) {
+  return k !== "_3D_WEIGHT" && !/_UNIT$/.test(k);
+});
 INPUT_IDS.forEach(function (k) {
   var el = $(k);
   if (!el) return;
@@ -424,6 +445,18 @@ var densEl = $("dens");
 densEl.addEventListener("input", function () {
   var key = inputs.B4 === "加工中心" ? "B13_MC" : "B13";
   inputs[key] = densEl.value; saveInputs(); recalc();
+});
+
+/* V1.1：表面处理单价单位切换按钮（元/kg ↔ 元/件，点击即切并重算） */
+["B48_UNIT", "B48B_UNIT"].forEach(function (k) {
+  var el = $(k);
+  if (!el) return;
+  el.textContent = inputs[k] || "元/kg";
+  el.addEventListener("click", function () {
+    inputs[k] = String(inputs[k] || "元/kg").indexOf("件") >= 0 ? "元/kg" : "元/件";
+    el.textContent = inputs[k];
+    saveInputs(); recalc();
+  });
 });
 
 function onStructChange() {
@@ -466,6 +499,7 @@ function recalc() {
     B19: ffixed(o.B19, 6), B20: fgeneral(o.B20), B21: fgeneral(o.B21),
     B22: ffixed(o.B22, 6), B23: ffixed(o.B23, 6), B24: ffixed(o.B24, 4),
     B46: ffixed(o.B46, 4), B47: ffixed(o.B47, 4), B49: ffixed(o.B49, 4),
+    B49B: ffixed(o.B49B !== undefined ? o.B49B : 0, 4),
     B50: ffixed(o.B50, 4), B52: fgeneral(o.B52), B53: ffixed(o.B53, 4),
     B56FEE: ffixed(o.B56FEE, 4), B55: ffixed(o.B55, 4), B54: ffixed(o.B54, 4),
     D32: ffixed(o.D32, 8), E40: ffixed(o.E40, 8),
@@ -492,7 +526,8 @@ $("btnSave").addEventListener("click", function () {
   var rec = {
     name: inputs.B3 || "（未命名）",
     pieces: o.B20, gross: o.B23, netA: o.D32, netB: o.E40,
-    mat_fee: o.B46, surf_fee: o.B49, setup_fee: o.B50, mach_fee: o.B53,
+    mat_fee: o.B46, surf_fee: o.B49, surf2_fee: o.B49B !== undefined ? o.B49B : 0,
+    setup_fee: o.B50, mach_fee: o.B53,
     mc_fee: o.B56FEE !== undefined ? o.B56FEE : 0, clean_fee: o.B55,
     time: new Date().toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "-")
@@ -529,6 +564,7 @@ function renderRecords() {
       '<div><span>材料费</span><b>' + esc(fmtRec(Number(r.mat_fee) || 0, 3)) + "</b></div>" +
       '<div><span>清洗费</span><b>' + esc(fmtRec(Number(r.clean_fee) || 0, 3)) + "</b></div>" +
       '<div><span>表面处理</span><b>' + esc(fmtRec(Number(r.surf_fee) || 0, 3)) + "</b></div>" +
+      '<div><span>表面处理2</span><b>' + esc(fmtRec(Number(r.surf2_fee) || 0, 3)) + "</b></div>" +
       '<div><span>加工费</span><b>' + esc(fmtRec(Number(r.mach_fee) || 0, 3)) + "</b></div>" +
       '<div><span>调机费</span><b>' + esc(fmtRec(Number(r.setup_fee) || 0, 3)) + "</b></div>" +
       '<div><span>加工中心费</span><b>' + esc(fmtRec(Number(r.mc_fee) || 0, 3)) + "</b></div>" +
