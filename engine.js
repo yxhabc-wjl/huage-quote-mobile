@@ -1,7 +1,8 @@
 /* ============================================================
- * 华哥报价计算器 手机版 —— 计算引擎 V1.0
+ * 华哥报价计算器 手机版 —— 计算引擎 V1.1
  * 与电脑版 main.py compute() 逐式对齐（含 V4.7 圆棒 π/4、
- * V4.8 自动车床产能、V4.9 加工中心费与调机费切换、V5.2 默认值）
+ * V4.8 自动车床产能、V4.9 加工中心费与调机费切换、V5.2 默认值、
+ * V5.5 POM 材质与尼龙PA66/POM 1米棒料基准长度）
  * Excel 语义算术：错误值传播、分母 0 → "—"（后续按 0 参与运算）
  * ============================================================ */
 "use strict";
@@ -80,13 +81,16 @@ function compute(inp) {
   var out = {};
   // V4.8：自动车床切刀余量 2.5mm，其它设备 3mm
   out["B16"] = xadd(B7, B4 === "自动车床" ? 2.5 : 3.0);
-  if (B4 === "走心机") out["B17"] = 2260.0;
-  else if (B4 === "走刀机") out["B17"] = 2370.0;
-  else if (B4 === "自动车床") out["B17"] = 2440.0; // 2500-60（料尾）
+  // V1.1：尼龙PA66/POM 为 1 米棒料，基准长度 2500→1000（算法不变，扣料尾量不变）
+  var B12 = String(g("B12", "") || "");
+  var barLen = ONE_METER_MATERIALS.indexOf(B12) >= 0 ? 1000.0 : 2500.0;
+  if (B4 === "走心机") out["B17"] = barLen - 240.0;
+  else if (B4 === "走刀机") out["B17"] = barLen - 130.0;
+  else if (B4 === "自动车床") out["B17"] = barLen - 60.0; // 料尾
   else out["B17"] = DASH; // 加工中心
 
   out["B18"] = area_of(B6, B5, B6B);
-  out["B19"] = B4 === "加工中心" ? DASH : xdiv(xmul(xmul(out["B18"], 2500.0), r13), 1e6);
+  out["B19"] = B4 === "加工中心" ? DASH : xdiv(xmul(xmul(out["B18"], barLen), r13), 1e6);
   out["B20"] = B4 === "加工中心" ? DASH : xint(xdiv(out["B17"], out["B16"]));
   out["B21"] = xmul(xmul(B8, B9), B10);
   out["B22"] = B4 === "加工中心" ? xdiv(xmul(out["B21"], r13b), 1e6) : DASH;
@@ -138,6 +142,10 @@ function compute(inp) {
   var B44 = coerce(g("B44")), B45 = coerce(g("B45"));
   var B48 = coerce(g("B48")), B51 = coerce(g("B51"));
   var B56 = coerce(g("B56")); // V4.9：加工中心加工秒数
+  // V1.1：表面处理2 + 单位切换（与电脑版 V5.4 一致）
+  var B48B = coerce(g("B48B", "0"));
+  var u1 = String(g("B48_UNIT", "元/kg") || "元/kg");
+  var u2 = String(g("B48B_UNIT", "元/kg") || "元/kg");
 
   // 报价表自算净重：加工中心用 E40，走心/走刀用 D32
   var net_quote = B4 === "加工中心" ? out["E40"] : out["D32"];
@@ -156,7 +164,18 @@ function compute(inp) {
   // B46 材料费：毛重始终为报价表毛重 B23
   out["B46"] = xadd(xsub(xmul(xmul(out["B23"], 1.03), B44), out["B47"]), xdiv(100.0, B11));
   // B49 表面处理费 = 当前净重 × 单价 + 200/数量
-  out["B49"] = xadd(xmul(net, B48), xdiv(200.0, B11));
+  // V1.1：单位可切换 元/kg↔元/件（元/件时不乘净重，单价直接计入）
+  var cart1 = xdiv(200.0, B11);
+  out["B49"] = u1.indexOf("件") >= 0 ? xadd(B48, cart1) : xadd(xmul(net, B48), cart1);
+  // V1.1：表面处理2（两种表面处理可能同时存在，算法同表面处理1）。
+  // 与表面处理1的区别：单价为 0（未用到）时该项费用 = 0，不加 200/数量车费；
+  // 填了单价（>0）才加 200/数量（每项各计一次）
+  if (isErr(B48B)) out["B49B"] = B48B;
+  else if (!(B48B > 0)) out["B49B"] = 0.0;
+  else {
+    var cart2 = xdiv(200.0, B11);
+    out["B49B"] = u2.indexOf("件") >= 0 ? xadd(B48B, cart2) : xadd(xmul(net, B48B), cart2);
+  }
   if (B4 === "自动车床") {
     // V4.8：自动车床按产能计算加工费，不按加工秒数
     out["B50"] = 0.0;
@@ -197,9 +216,9 @@ function compute(inp) {
   } else {
     out["B55"] = per_clean;
   }
-  // V4.9：总成本 = 材料费+表面处理费+调机费+加工费+加工中心费+清洗费
-  out["B54"] = xadd(xadd(xadd(xadd(xadd(out["B46"], out["B49"]), out["B50"]),
-    out["B53"]), out["B56FEE"] !== undefined ? out["B56FEE"] : 0.0), out["B55"]);
+  // V4.9：总成本 = 材料费+表面处理费+表面处理2费+调机费+加工费+加工中心费+清洗费
+  out["B54"] = xadd(xadd(xadd(xadd(xadd(xadd(out["B46"], out["B49"]), out["B49B"]),
+    out["B50"]), out["B53"]), out["B56FEE"] !== undefined ? out["B56FEE"] : 0.0), out["B55"]);
   return out;
 }
 
@@ -222,8 +241,11 @@ var MATERIALS = [
   ["无氧铜C1020", 8.94], ["紫铜T2/T3", 8.9],
   ["不锈钢304", 7.93], ["不锈钢316", 7.98],
   ["碳钢Q235/45#", 7.85], ["合金钢40Cr", 7.85], ["铸铁HT200", 7.25],
-  ["钛合金TC4", 4.51], ["锌合金ZA", 6.7], ["镁合金AZ31", 1.78], ["尼龙PA66", 1.15]
+  ["钛合金TC4", 4.51], ["锌合金ZA", 6.7], ["镁合金AZ31", 1.78], ["尼龙PA66", 1.15],
+  ["POM", 1.42]  // V1.1：新增聚甲醛/赛钢（密度与电脑版一致）
 ];
+// V1.1：这几种材质市面为 1 米棒料，选中时基准棒长 2500→1000（算法不变仅长度变）
+var ONE_METER_MATERIALS = ["尼龙PA66", "POM"];
 var EQUIPMENTS = ["走心机", "走刀机", "加工中心", "自动车床"];
 var BLANKS = ["圆棒", "六角", "管料"];
 var SIGNS = ["加", "减"];
@@ -248,6 +270,8 @@ var DEFAULTS = {
   "B107": "0", "C107": "0", "F107": "加",
   "B108": "0", "C108": "0", "F108": "减",
   "B44": "0", "B45": "0", "B48": "0", "B51": "0", "B56": "0",
+  // V1.1：表面处理2单价（默认0=未用到）+ 两个表面处理单价的单位（元/kg↔元/件）
+  "B48B": "0", "B48_UNIT": "元/kg", "B48B_UNIT": "元/kg",
   "CAP_L": "0", "CAP_S1": "0", "CAP_S2": "0", "CAP_S3": "0", "CAP_S4": "0",
   "DAY_RATE": "300",
   "_3D_WEIGHT": ""
