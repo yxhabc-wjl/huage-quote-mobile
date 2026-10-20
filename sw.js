@@ -1,6 +1,6 @@
-/* 华哥报价手机版 Service Worker：App Shell 离线缓存（V1.0）
+/* 华哥报价手机版 Service Worker：App Shell 离线缓存（V1.1）
  * 发新版时必须把 CACHE 版本号 +1（如 wujin-shell-v1.1），否则旧缓存不更新 */
-const CACHE = "wujin-shell-v1.0";
+const CACHE = "wujin-shell-v1.1";
 const ASSETS = [
   "./", "./index.html", "./engine.js", "./manifest.webmanifest",
   "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"
